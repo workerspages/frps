@@ -7,7 +7,7 @@ ENV TZ=Asia/Shanghai
 
 # =========================================================
 # 设置默认环境变量 (关键修复)
-# 如果 Zeabur 没有设置这些变量，这里的值将作为默认值生效
+# 如果 PaaS 平台没有设置这些变量，这里的值将作为默认值生效
 # =========================================================
 ENV FRP_BIND_PORT=7000
 ENV FRP_HTTP_PORT=80
@@ -18,7 +18,6 @@ ENV FRP_DASHBOARD_PWD=admin
 ENV FRP_ALLOW_PORT_START=1000
 ENV FRP_ALLOW_PORT_END=60000
 ENV FRP_MAX_PORTS=80
-# FRP_AUTH_TOKEN 不设置默认值，强制要求在平台填写，或者留空(不推荐)
 ENV FRP_AUTH_TOKEN="" 
 
 WORKDIR /frp
