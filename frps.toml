@@ -27,9 +27,9 @@ auth.method = "token"
 auth.token = "12345678"
 
 allowPorts = [
-  { start = 10001, end = 50000 }
+  { start = 8000, end = 65535 }
 ]
 
-maxPortsPerClient = 8
+maxPortsPerClient = 80
 udpPacketSize = 1500
 natholeAnalysisDataReserveHours = 168
