@@ -2,14 +2,27 @@ FROM alpine:3.18
 
 LABEL maintainer="Stille <stille@ioiox.com>"
 
-# 默认版本，构建时可被覆盖
 ARG VERSION=0.65.0
 ENV TZ=Asia/Shanghai
 
+# =========================================================
+# 设置默认环境变量 (关键修复)
+# 如果 Zeabur 没有设置这些变量，这里的值将作为默认值生效
+# =========================================================
+ENV FRP_BIND_PORT=7000
+ENV FRP_HTTP_PORT=80
+ENV FRP_HTTPS_PORT=443
+ENV FRP_DASHBOARD_PORT=7500
+ENV FRP_DASHBOARD_USER=admin
+ENV FRP_DASHBOARD_PWD=admin
+ENV FRP_ALLOW_PORT_START=1000
+ENV FRP_ALLOW_PORT_END=60000
+ENV FRP_MAX_PORTS=8
+# FRP_AUTH_TOKEN 不设置默认值，强制要求在平台填写，或者留空(不推荐)
+ENV FRP_AUTH_TOKEN="" 
+
 WORKDIR /frp
 
-# 安装依赖 & 下载 FRP
-# 使用多架构逻辑 (amd64/arm64)
 RUN apk add --no-cache tzdata ca-certificates wget \
     && ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone \
@@ -23,15 +36,10 @@ RUN apk add --no-cache tzdata ca-certificates wget \
     && rm -rf *.tar.gz frp_${VERSION}_linux_${PLATFORM} \
     && apk del wget
 
-# 复制 PaaS 专用配置文件到镜像中
 COPY frps_paas.toml /frp/frps.toml
 
-# 声明数据卷 (虽然 PaaS 通常不持久化，但保留此声明是个好习惯)
 VOLUME /frp
 
-# 暴露常用端口 (仅作声明，实际以 PaaS 配置为准)
 EXPOSE 7000 7500 80 443
 
-# 启动命令
-# 注意：不使用 ENTRYPOINT 而是 CMD，方便在 PaaS 面板覆盖启动命令
 CMD ["/usr/bin/frps", "-c", "/frp/frps.toml"]
