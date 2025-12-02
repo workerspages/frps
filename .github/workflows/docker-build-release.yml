@@ -1,50 +1,83 @@
-name: "docker build release"
+name: "Build and Publish Docker Image"
 
 on:
   push:
+    branches: [ "master", "main" ]
+    paths:
+      - 'Dockerfile'
+      - 'frps.toml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 env:
   PROJECT: frps
+  # 时区设置，方便日志查看
+  TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.3.5
+    permissions:
+      contents: read
+      packages: write # 允许写入 ghcr.io
 
-      - name: Set tag
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Version from Dockerfile
         id: tag
         run: |
-          if [[ -n $(cat Dockerfile | awk '{if($1~"ENV" && $2=="VERSION")print $3}') ]]; then
-            VERSION=$(cat Dockerfile | awk '{if($1~"ENV" && $2=="VERSION")print $3}')
-            echo "tag=$VERSION" >> $GITHUB_ENV
+          # 尝试从 Dockerfile 读取 ENV VERSION
+          DOCKER_VERSION=$(grep "ENV VERSION" Dockerfile | awk '{print $3}')
+          
+          if [[ -n "$DOCKER_VERSION" ]]; then
+            echo "Version found: $DOCKER_VERSION"
+            echo "version=$DOCKER_VERSION" >> $GITHUB_ENV
           else
-            echo "tag=$(date +%Y)-$(date +%m)-$(date +%d)" >> $GITHUB_ENV
+            DATE_TAG="$(date +%Y)-$(date +%m)-$(date +%d)"
+            echo "Version not found, using date: $DATE_TAG"
+            echo "version=$DATE_TAG" >> $GITHUB_ENV
           fi
 
+      - name: Lowercase Owner Name
+        id: owner_lower
+        run: |
+          # GHCR 要求镜像名必须全小写，这里将用户名转为小写
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lower=$OWNER_LOWER" >> $GITHUB_ENV
+
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login Docker Hub
-        uses: docker/login-action@v1 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push to docker hub
-        uses: docker/build-push-action@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push to Docker Hub and GHCR
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          # 同时推送到两个仓库，打上 latest 标签和版本号标签
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}:latest
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}:${{ env.tag }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}:${{ env.version }}
+            ghcr.io/${{ env.owner_lower }}/${{ env.PROJECT }}:latest
+            ghcr.io/${{ env.owner_lower }}/${{ env.PROJECT }}:${{ env.version }}
 
       - name: Sync README.md to Docker Hub
         uses: ms-jpq/sync-dockerhub-readme@v1
@@ -53,20 +86,3 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}
           readme: "./README.md"
-
-      - name: Login harbor
-        uses: docker/login-action@v1 
-        with:
-          registry: ${{ secrets.HARBOR_REGISTRY }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
-
-      - name: Build and push to harbor
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ secrets.HARBOR_REGISTRY }}/${{ secrets.HARBOR_USERNAME }}/${{ env.PROJECT }}:latest
-            ${{ secrets.HARBOR_REGISTRY }}/${{ secrets.HARBOR_USERNAME }}/${{ env.PROJECT }}:${{ env.tag }}
