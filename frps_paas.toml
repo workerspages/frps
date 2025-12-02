@@ -1,54 +1,47 @@
 # =========================================================
 # FRPS PaaS 专用配置模板
-# 所有敏感信息均通过环境变量 (.Envs) 获取
+# 修复版：移除不支持的 default 函数，依赖 Docker ENV 默认值
 # =========================================================
 
-# 绑定地址 (Docker 容器内必须为 0.0.0.0)
 bindAddr = "0.0.0.0"
 
-# FRPC 连接端口 (默认 7000，可通过 FRP_BIND_PORT 修改)
-bindPort = {{ .Envs.FRP_BIND_PORT | default 7000 }}
+# 直接读取环境变量，默认值由 Dockerfile 提供
+bindPort = {{ .Envs.FRP_BIND_PORT }}
 
-# KCP 端口 (通常与 bindPort 一致，可选)
-# kcpBindPort = {{ .Envs.FRP_BIND_PORT | default 7000 }}
-
-# 虚拟主机端口 (用于 HTTP/HTTPS 穿透)
-vhostHTTPPort = {{ .Envs.FRP_HTTP_PORT | default 80 }}
-vhostHTTPSPort = {{ .Envs.FRP_HTTPS_PORT | default 443 }}
+vhostHTTPPort = {{ .Envs.FRP_HTTP_PORT }}
+vhostHTTPSPort = {{ .Envs.FRP_HTTPS_PORT }}
 
 # =========================================================
-# Dashboard (仪表盘)
+# Dashboard
 # =========================================================
 webServer.addr = "0.0.0.0"
-webServer.port = {{ .Envs.FRP_DASHBOARD_PORT | default 7500 }}
-webServer.user = "{{ .Envs.FRP_DASHBOARD_USER | default "admin" }}"
-webServer.password = "{{ .Envs.FRP_DASHBOARD_PWD | default "admin" }}"
+webServer.port = {{ .Envs.FRP_DASHBOARD_PORT }}
+webServer.user = "{{ .Envs.FRP_DASHBOARD_USER }}"
+webServer.password = "{{ .Envs.FRP_DASHBOARD_PWD }}"
 
 # =========================================================
-# 身份验证 (Auth)
+# Auth
 # =========================================================
 auth.method = "token"
-# 必须设置环境变量 FRP_AUTH_TOKEN，否则无法连接
+# Token 必须在 Zeabur 环境变量中设置，否则为空串
 auth.token = "{{ .Envs.FRP_AUTH_TOKEN }}"
 
 # =========================================================
-# 日志配置 (PaaS 关键配置)
+# Log
 # =========================================================
-# 强制输出到控制台，以便 Zeabur/Railway 面板查看日志
 log.to = "console"
 log.level = "info"
 log.maxDays = 3
 
 # =========================================================
-# 传输层优化
+# Transport
 # =========================================================
 transport.maxPoolCount = 2000
 transport.tcpMux = true
 transport.tcpKeepalive = 7200
 
-# 允许的端口范围 (防止被滥用)
 allowPorts = [
-  { start = {{ .Envs.FRP_ALLOW_PORT_START | default 1000 }}, end = {{ .Envs.FRP_ALLOW_PORT_END | default 60000 }} }
+  { start = {{ .Envs.FRP_ALLOW_PORT_START }}, end = {{ .Envs.FRP_ALLOW_PORT_END }} }
 ]
 
-maxPortsPerClient = {{ .Envs.FRP_MAX_PORTS | default 8 }}
+maxPortsPerClient = {{ .Envs.FRP_MAX_PORTS }}
