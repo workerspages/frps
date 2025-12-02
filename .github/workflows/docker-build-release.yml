@@ -75,9 +75,7 @@ jobs:
           # 同时推送到两个仓库，打上 latest 标签和版本号标签
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}:paas
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT }}:${{ env.version }}
             ghcr.io/${{ env.owner_lower }}/${{ env.PROJECT }}:paas
-            ghcr.io/${{ env.owner_lower }}/${{ env.PROJECT }}:${{ env.version }}
 
       - name: Sync README.md to Docker Hub
         uses: ms-jpq/sync-dockerhub-readme@v1
